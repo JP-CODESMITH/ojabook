@@ -10,63 +10,103 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AddRouteImport } from './routes/add'
-import { Route as DebtsRouteImport } from './routes/debts'
-import { Route as HistoryRouteImport } from './routes/history'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAddRouteImport } from './routes/app.add'
+import { Route as AppDebtsRouteImport } from './routes/app.debts'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AddRoute = AddRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAddRoute = AppAddRouteImport.update({
   id: '/add',
   path: '/add',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const DebtsRoute = DebtsRouteImport.update({
+const AppDebtsRoute = AppDebtsRouteImport.update({
   id: '/debts',
   path: '/debts',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
+const AppHistoryRoute = AppHistoryRouteImport.update({
   id: '/history',
   path: '/history',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/add': typeof AddRoute
-  '/debts': typeof DebtsRoute
-  '/history': typeof HistoryRoute
+  '/app': typeof AppRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/app/add': typeof AppAddRoute
+  '/app/debts': typeof AppDebtsRoute
+  '/app/history': typeof AppHistoryRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/add': typeof AddRoute
-  '/debts': typeof DebtsRoute
-  '/history': typeof HistoryRoute
+  '/privacy': typeof PrivacyRoute
+  '/app/add': typeof AppAddRoute
+  '/app/debts': typeof AppDebtsRoute
+  '/app/history': typeof AppHistoryRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/add': typeof AddRoute
-  '/debts': typeof DebtsRoute
-  '/history': typeof HistoryRoute
+  '/app': typeof AppRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/app/add': typeof AppAddRoute
+  '/app/debts': typeof AppDebtsRoute
+  '/app/history': typeof AppHistoryRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/add' | '/debts' | '/history'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/privacy'
+    | '/app/add'
+    | '/app/debts'
+    | '/app/history'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/add' | '/debts' | '/history'
-  id: '__root__' | '/' | '/add' | '/debts' | '/history'
+  to: '/' | '/privacy' | '/app/add' | '/app/debts' | '/app/history' | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/privacy'
+    | '/app/add'
+    | '/app/debts'
+    | '/app/history'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AddRoute: typeof AddRoute
-  DebtsRoute: typeof DebtsRoute
-  HistoryRoute: typeof HistoryRoute
+  AppRoute: typeof AppRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,35 +118,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/add': {
-      id: '/add'
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/add': {
+      id: '/app/add'
       path: '/add'
-      fullPath: '/add'
-      preLoaderRoute: typeof AddRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/add'
+      preLoaderRoute: typeof AppAddRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/debts': {
-      id: '/debts'
+    '/app/debts': {
+      id: '/app/debts'
       path: '/debts'
-      fullPath: '/debts'
-      preLoaderRoute: typeof DebtsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/debts'
+      preLoaderRoute: typeof AppDebtsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/history': {
-      id: '/history'
+    '/app/history': {
+      id: '/app/history'
       path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAddRoute: typeof AppAddRoute
+  AppDebtsRoute: typeof AppDebtsRoute
+  AppHistoryRoute: typeof AppHistoryRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAddRoute: AppAddRoute,
+  AppDebtsRoute: AppDebtsRoute,
+  AppHistoryRoute: AppHistoryRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AddRoute: AddRoute,
-  DebtsRoute: DebtsRoute,
-  HistoryRoute: HistoryRoute,
+  AppRoute: AppRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
