@@ -17,6 +17,31 @@ To build this application for production:
 bun --bun run build
 ```
 
+## Deploying to Vercel
+
+The app is a client-only TanStack Start SPA: `vite build` emits a static site
+into `dist/client`, plus a small server bundle in `dist/server` that is only
+used at build time for prerendering and is **not** deployed.
+
+`vercel.json` wires this up:
+
+- **Build** `bun install` → `bun run build`
+- **Output** `dist/client`
+- **Routing** `/` and `/privacy` are prerendered to real HTML; every other
+  path (i.e. `/app` and its child routes) falls back to the SPA shell
+  `dist/client/_shell.html`. Vercel checks the filesystem before applying the
+  catch-all rewrite, so static assets are still served directly.
+- **Caching** hashed assets in `/assets` are immutable; `sw.js` is never
+  cached so service-worker updates propagate.
+
+To deploy, import the repository at [vercel.com/new](https://vercel.com/new);
+the committed `vercel.json` supplies all settings, so no dashboard build
+configuration is needed.
+
+Optional analytics: set `VITE_ANALYTICS_TOKEN` (and optionally
+`VITE_ANALYTICS_SRC`) as build-time environment variables in the Vercel
+project. Leave them unset to disable analytics entirely (see `.env.example`).
+
 ## Styling
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
