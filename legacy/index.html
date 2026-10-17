@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1b6b3a">
+<link rel="manifest" href="manifest.json">
+<title>Ledger</title>
+<style>
+  :root { --g:#1b6b3a; --r:#b3261e; --o:#b26a00; --bg:#f6f7f4; --card:#fff; --tx:#1c1f1c; --mut:#6b726b; --bd:#e2e5de; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--tx); padding-bottom:76px; }
+  header { background:var(--g); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:18px; margin:0; }
+  #biz { background:transparent; border:0; color:#fff; font-size:13px; text-align:right; width:50%; }
+  #biz::placeholder { color:#cfe5d6; }
+  main { padding:12px; max-width:600px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--bd); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .stat small { color:var(--mut); display:block; font-size:12px; }
+  .stat b { font-size:20px; }
+  .pos { color:var(--g); } .neg { color:var(--r); } .warn { color:var(--o); }
+  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
+  input, select { width:100%; padding:12px; font-size:16px; border:1px solid var(--bd); border-radius:8px; background:#fff; }
+  button { font-size:16px; padding:12px 16px; border:0; border-radius:8px; background:var(--g); color:#fff; width:100%; margin-top:14px; }
+  button.sec { background:#e8ebe4; color:var(--tx); margin-top:8px; }
+  button.small { width:auto; padding:6px 10px; font-size:13px; margin:0; }
+  button.del { background:transparent; color:var(--r); padding:6px; width:auto; margin:0; font-size:13px; }
+  nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:#fff; border-top:1px solid var(--bd); }
+  nav button { flex:1; background:none; color:var(--mut); border-radius:0; margin:0; padding:14px 4px; font-size:13px; }
+  nav button.on { color:var(--g); font-weight:700; border-top:3px solid var(--g); }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--bd); }
+  .row:last-child { border-bottom:0; }
+  .row .l small { color:var(--mut); display:block; }
+  .tabs { display:none; } .tabs.on { display:block; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:99px; background:#eef0ea; color:var(--mut); }
+  .pill.credit { background:#fdecc8; color:var(--o); }
+  #status { font-size:11px; opacity:.9; }
+  .empty { color:var(--mut); text-align:center; padding:18px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Ledger</h1><span id="status"></span></div>
+  <input id="biz" placeholder="Business name" aria-label="Business name">
+</header>
+<main>
+
+<!-- HOME -->
+<section id="home" class="tabs on">
+  <div class="card">
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="range" style="flex:1">
+        <option value="today">Today</option>
+        <option value="week">This week</option>
+        <option value="month" selected>This month</option>
+        <option value="all">All time</option>
+      </select>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="stat"><small>Sales</small><b id="sSales" class="pos">0</b></div>
+      <div class="stat"><small>Expenses</small><b id="sExp" class="neg">0</b></div>
+      <div class="stat"><small>Profit</small><b id="sProfit">0</b></div>
+      <div class="stat"><small>Customers owe you</small><b id="sOwed" class="warn">0</b></div>
+    </div>
+  </div>
+  <div class="card"><b>Recent</b><div id="recent"></div></div>
+</section>
+
+<!-- ADD -->
+<section id="add" class="tabs">
+  <div class="card">
+    <div class="grid">
+      <button class="sec" id="tSale" style="margin:0">Sale</button>
+      <button class="sec" id="tExp" style="margin:0">Expense</button>
+    </div>
+    <form id="form">
+      <label id="lItem">Item sold (e.g. tomatoes, 2 bags rice)</label>
+      <input id="item" required autocomplete="off" list="items">
+      <datalist id="items"></datalist>
+      <label>Amount (₦)</label>
+      <input id="amount" type="number" inputmode="decimal" min="0" step="any" required>
+      <div id="saleExtra">
+        <label>Payment</label>
+        <select id="pay">
+          <option value="paid">Paid in full</option>
+          <option value="credit">On credit (customer owes)</option>
+          <option value="part">Part payment</option>
+        </select>
+        <div id="partBox" style="display:none">
+          <label>Amount paid now (₦)</label>
+          <input id="paidNow" type="number" inputmode="decimal" min="0" step="any">
+        </div>
+        <div id="custBox" style="display:none">
+          <label>Customer name</label>
+          <input id="cust" autocomplete="off" list="custs">
+          <datalist id="custs"></datalist>
+        </div>
+      </div>
+      <div id="expExtra" style="display:none">
+        <label>Category</label>
+        <select id="cat">
+          <option>Stock / goods</option><option>Transport</option><option>Labour</option>
+          <option>Feed / seed / fertilizer</option><option>Rent</option><option>Other</option>
+        </select>
+      </div>
+      <label>Date</label>
+      <input id="date" type="date" required>
+      <button type="submit">Save</button>
+    </form>
+  </div>
+</section>
+
+<!-- DEBTS -->
+<section id="debts" class="tabs">
+  <div class="card"><b>Who owes you</b><div id="debtList"></div></div>
+</section>
+
+<!-- HISTORY -->
+<section id="hist" class="tabs">
+  <div class="card"><b>All records</b><div id="histList"></div></div>
+  <div class="card">
+    <b>Backup</b>
+    <button class="sec" id="exp">Download CSV</button>
+    <button class="sec" id="bak">Download backup (JSON)</button>
+    <button class="sec" id="rst">Restore from backup</button>
+    <input type="file" id="file" accept=".json" style="display:none">
+    <p style="font-size:12px;color:var(--mut)">Your records live only on this phone. Download a backup now and then.</p>
+  </div>
+</section>
+
+</main>
+<nav>
+  <button data-t="home" class="on">Home</button>
+  <button data-t="add">Add</button>
+  <button data-t="debts">Debts</button>
+  <button data-t="hist">History</button>
+</nav>
+
+<script>
+const KEY = 'ledger.v1';
+const $ = id => document.getElementById(id);
+let db = load();
+let mode = 'sale';
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || { biz:'', recs:[] }; }
+  catch (e) { return { biz:'', recs:[] }; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch (e) { alert('Could not save. Phone storage may be full.'); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const naira = n => '₦' + Math.round(n).toLocaleString('en-NG');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Record: {id, type:'sale'|'exp', date, item, amount, paid, cust, cat, payments:[{date,amount}]}
+// For sales, paid = amount received so far. Debt = amount - paid.
+function owed(r) { return r.type === 'sale' ? Math.max(0, r.amount - r.paid) : 0; }
+
+function inRange(r, range) {
+  if (range === 'all') return true;
+  const t = new Date(r.date + 'T00:00:00'), n = new Date(today() + 'T00:00:00');
+  const days = (n - t) / 864e5;
+  if (range === 'today') return days === 0;
+  if (range === 'week') return days >= 0 && days < 7;
+  if (range === 'month') return t.getFullYear() === n.getFullYear() && t.getMonth() === n.getMonth();
+  return true;
+}
+
+function render() {
+  $('biz').value = db.biz || '';
+  const rows = db.recs.filter(r => inRange(r, $('range').value));
+  const sales = rows.filter(r => r.type === 'sale').reduce((a, r) => a + r.amount, 0);
+  const exp = rows.filter(r => r.type === 'exp').reduce((a, r) => a + r.amount, 0);
+  $('sSales').textContent = naira(sales);
+  $('sExp').textContent = naira(exp);
+  const p = sales - exp;
+  $('sProfit').textContent = naira(p);
+  $('sProfit').className = p >= 0 ? 'pos' : 'neg';
+  $('sOwed').textContent = naira(db.recs.reduce((a, r) => a + owed(r), 0));
+
+  const sorted = [...db.recs].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  $('recent').innerHTML = sorted.slice(0, 5).map(rowHtml).join('') || '<div class="empty">No records yet. Tap Add.</div>';
+  $('histList').innerHTML = sorted.map(r => rowHtml(r, true)).join('') || '<div class="empty">Nothing here yet.</div>';
+
+  // Debts grouped by customer
+  const by = {};
+  db.recs.forEach(r => { const o = owed(r); if (o > 0) (by[r.cust || 'Unnamed'] ||= []).push(r); });
+  const names = Object.keys(by).sort((a, b) => tot(by[b]) - tot(by[a]));
+  $('debtList').innerHTML = names.map(n => `
+    <div class="row"><div class="l"><b>${esc(n)}</b><small>${by[n].length} sale(s)</small></div>
+    <div style="text-align:right"><b class="warn">${naira(tot(by[n]))}</b><br>
+    <button class="small" onclick="payDebt('${esc(n).replace(/'/g, "\\'")}')">Got payment</button></div></div>`).join('')
+    || '<div class="empty">No one owes you. 🎉</div>';
+
+  $('items').innerHTML = [...new Set(db.recs.map(r => r.item))].map(i => `<option value="${esc(i)}">`).join('');
+  $('custs').innerHTML = [...new Set(db.recs.map(r => r.cust).filter(Boolean))].map(i => `<option value="${esc(i)}">`).join('');
+}
+const tot = list => list.reduce((a, r) => a + owed(r), 0);
+
+function rowHtml(r, withDel) {
+  const o = owed(r);
+  const tag = r.type === 'sale' ? (o > 0 ? `<span class="pill credit">owes ${naira(o)}</span>` : '<span class="pill">paid</span>') : `<span class="pill">${esc(r.cat || 'Expense')}</span>`;
+  return `<div class="row"><div class="l"><b>${esc(r.item)}</b><small>${r.date}${r.cust ? ' · ' + esc(r.cust) : ''} ${tag}</small></div>
+    <div style="text-align:right"><b class="${r.type === 'sale' ? 'pos' : 'neg'}">${r.type === 'sale' ? '+' : '−'}${naira(r.amount)}</b>
+    ${withDel ? `<br><button class="del" onclick="delRec('${r.id}')">Delete</button>` : ''}</div></div>`;
+}
+
+function delRec(id) {
+  if (!confirm('Delete this record?')) return;
+  db.recs = db.recs.filter(r => r.id !== id); save(); render();
+}
+
+function payDebt(name) {
+  const list = db.recs.filter(r => owed(r) > 0 && (r.cust || 'Unnamed') === name).sort((a, b) => a.date.localeCompare(b.date));
+  const t = tot(list);
+  let v = prompt(`${name} owes ${naira(t)}. How much did they pay?`);
+  if (v === null) return;
+  v = parseFloat(v);
+  if (!(v > 0)) return alert('Enter a valid amount.');
+  if (v > t) return alert('That is more than they owe.');
+  for (const r of list) { // pay oldest debts first
+    if (v <= 0) break;
+    const take = Math.min(v, owed(r));
+    r.paid += take; v -= take;
+    (r.payments ||= []).push({ date: today(), amount: take });
+  }
+  save(); render();
+}
+
+// Tabs
+function show(t) {
+  document.querySelectorAll('.tabs').forEach(s => s.classList.toggle('on', s.id === t));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.t));
+
+function setMode(m) {
+  mode = m;
+  $('tSale').style.background = m === 'sale' ? 'var(--g)' : '';
+  $('tSale').style.color = m === 'sale' ? '#fff' : '';
+  $('tExp').style.background = m === 'exp' ? 'var(--r)' : '';
+  $('tExp').style.color = m === 'exp' ? '#fff' : '';
+  $('saleExtra').style.display = m === 'sale' ? '' : 'none';
+  $('expExtra').style.display = m === 'exp' ? '' : 'none';
+  $('lItem').textContent = m === 'sale' ? 'Item sold (e.g. tomatoes, 2 bags rice)' : 'What did you spend on?';
+}
+$('tSale').onclick = () => setMode('sale');
+$('tExp').onclick = () => setMode('exp');
+$('pay').onchange = () => {
+  const v = $('pay').value;
+  $('custBox').style.display = v === 'paid' ? 'none' : '';
+  $('partBox').style.display = v === 'part' ? '' : 'none';
+};
+
+$('form').onsubmit = e => {
+  e.preventDefault();
+  const amount = parseFloat($('amount').value);
+  if (!(amount > 0)) return;
+  const r = { id: uid(), type: mode, date: $('date').value, item: $('item').value.trim(), amount, paid: amount };
+  if (mode === 'sale') {
+    const p = $('pay').value;
+    if (p !== 'paid') {
+      r.cust = $('cust').value.trim();
+      if (!r.cust) return alert('Enter the customer name so you can track the debt.');
+      r.paid = p === 'credit' ? 0 : Math.min(amount, parseFloat($('paidNow').value) || 0);
+    }
+  } else { r.cat = $('cat').value; }
+  db.recs.push(r); save();
+  $('form').reset(); $('date').value = today(); $('pay').onchange(); setMode(mode);
+  render(); show('home');
+};
+
+$('biz').onchange = () => { db.biz = $('biz').value; save(); };
+$('range').onchange = render;
+
+// Export / backup
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('exp').onclick = () => {
+  const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const lines = ['Date,Type,Item,Amount,Paid,Owed,Customer,Category'];
+  [...db.recs].sort((a, b) => a.date.localeCompare(b.date)).forEach(r =>
+    lines.push([r.date, r.type === 'sale' ? 'Sale' : 'Expense', q(r.item), r.amount, r.type === 'sale' ? r.paid : '', owed(r), q(r.cust), q(r.cat)].join(',')));
+  download(`ledger-${today()}.csv`, lines.join('\n'), 'text/csv');
+};
+$('bak').onclick = () => download(`ledger-backup-${today()}.json`, JSON.stringify(db), 'application/json');
+$('rst').onclick = () => $('file').click();
+$('file').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!Array.isArray(d.recs)) throw 0;
+      if (!confirm('Replace current records with this backup?')) return;
+      db = d; save(); render();
+    } catch (x) { alert('That file is not a valid backup.'); }
+  };
+  rd.readAsText(f);
+};
+
+// Online/offline indicator + service worker
+function status() { $('status').textContent = navigator.onLine ? 'Saved on this phone' : 'Offline · all good'; }
+addEventListener('online', status); addEventListener('offline', status);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+$('date').value = today();
+setMode('sale'); status(); render();
+</script>
+</body>
+</html>
