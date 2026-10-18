@@ -20,7 +20,7 @@ RUN bun run build
 # Runtime stage — unprivileged nginx serving the static build as a non-root
 # user on port 8080. No shell, no package manager, no build tooling shipped.
 # ---------------------------------------------------------------------------
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 
 # Base images lag behind Alpine's security patches. Upgrade the OS packages to
 # the patched versions (this is what clears most Trivy HIGH/CRITICAL findings).
