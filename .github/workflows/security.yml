@@ -1,0 +1,153 @@
+name: Security
+
+on:
+  pull_request:
+  # `master` is the repository's current default branch; `main` is included so
+  # the workflow keeps working if the default branch is renamed.
+  push:
+    branches: [main, master]
+  schedule:
+    # Weekly, Mondays at 03:27 UTC (off the hour to avoid the schedule rush).
+    - cron: '27 3 * * 1'
+  workflow_dispatch:
+
+# Least privilege by default; jobs that publish results widen it explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Scans the entire git history and fails the job on any finding.
+      # Free for personal repositories; org repos additionally need a
+      # GITLEAKS_LICENSE secret (not required here).
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-scan:
+    name: Dependency & misconfiguration scan (Trivy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      # One scan produces both the pass/fail signal and the SARIF report:
+      # exit-code 1 fails the job when HIGH/CRITICAL findings exist,
+      # and the report is still uploaded because of `if: always()`.
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: sarif
+          output: trivy-fs.sarif
+          limit-severities-for-sarif: true
+          hide-progress: true
+
+      - name: Upload Trivy SARIF to the Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4.39.0
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  audit:
+    name: Dependency audit (bun)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Cache Bun install cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      # Fails on high/critical advisories. If upstream advisories with no
+      # available fix make this noisy, add `continue-on-error: true` here and
+      # note it in the README.
+      - name: Audit (high and above)
+        run: bun audit --audit-level=high
+
+  codeql:
+    name: CodeQL (JavaScript/TypeScript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4.39.0
+        with:
+          languages: javascript-typescript
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4.39.0
+
+  container-scan:
+    name: Container scan (Trivy image)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Build image
+        run: docker build --tag ojabook:${{ github.sha }} .
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ojabook:${{ github.sha }}
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: sarif
+          output: trivy-image.sarif
+          limit-severities-for-sarif: true
+          hide-progress: true
+
+      - name: Upload Trivy SARIF to the Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4.39.0
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-container
