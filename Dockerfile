@@ -4,7 +4,7 @@
 # Build stage — install with the locked dependency set and build the static SPA
 # (Vite output in dist/client, plus the generated service worker).
 # ---------------------------------------------------------------------------
-FROM oven/bun:1.3.14-alpine AS build
+FROM oven/bun:1.4.3-alpine AS build
 WORKDIR /app
 
 # Dependencies first, so this layer is cached until the lockfile changes.
