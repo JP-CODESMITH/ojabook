@@ -1,0 +1,28 @@
+# VCS / CI
+.git
+.gitignore
+.github
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+*.local
+
+# Dependencies and build output (the build stage regenerates these)
+node_modules
+dist
+dist-ssr
+.tanstack
+.nitro
+.output
+.vinxi
+__unconfig*
+
+# Repo docs / tooling not needed inside the image (docker/ IS needed — see Dockerfile)
+legacy
+.vscode
+README.md
+SECURITY.md
+Dockerfile
+.dockerignore

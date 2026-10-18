@@ -42,6 +42,58 @@ Optional analytics: set `VITE_ANALYTICS_TOKEN` (and optionally
 `VITE_ANALYTICS_SRC`) as build-time environment variables in the Vercel
 project. Leave them unset to disable analytics entirely (see `.env.example`).
 
+## Security & CI
+
+[![CI](https://github.com/JP-CODESMITH/ojabook/actions/workflows/ci.yml/badge.svg)](https://github.com/JP-CODESMITH/ojabook/actions/workflows/ci.yml)
+[![Security](https://github.com/JP-CODESMITH/ojabook/actions/workflows/security.yml/badge.svg)](https://github.com/JP-CODESMITH/ojabook/actions/workflows/security.yml)
+
+Every pull request, and every push to the default branch, runs two workflows:
+**CI** (`.github/workflows/ci.yml`) and **Security**
+(`.github/workflows/security.yml`). The security workflow also runs on a weekly
+schedule. All third-party actions are pinned to a version tag and each job only
+gets the permissions it needs.
+
+### What gets scanned
+
+| Area | Tool | Job / config | Fails the build on |
+| ---- | ---- | ------------ | ------------------ |
+| Secrets in the full git history | Gitleaks | `security.yml` → `secret-scan` | any finding |
+| Dependencies + misconfiguration | Trivy `fs` (scans `bun.lock`, `Dockerfile`, config) | `security.yml` → `dependency-scan` | HIGH / CRITICAL (SARIF → Security tab) |
+| Dependency advisories | `bun audit --audit-level=high` | `security.yml` → `audit` | high / critical advisories |
+| Source code (SAST) | CodeQL (`javascript-typescript`) | `security.yml` → `codeql` | CodeQL findings |
+| Container image | Trivy `image` on the built `Dockerfile` | `security.yml` → `container-scan` | HIGH / CRITICAL (SARIF → Security tab) |
+| Response security headers | `vercel.json` (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`, HSTS) | deploy-time | — |
+
+The **CI** workflow runs `quality` (lint when a `lint` script exists, then
+`typecheck`, then `build`) and a `tests` job that runs only when a `test` script
+is defined. Dependency updates are opened weekly by Dependabot
+(`.github/dependabot.yml`) for the Bun lockfile, GitHub Actions and Docker.
+
+Reports are published to the repository's **Security → Code scanning** tab.
+
+### Run the scanners locally
+
+```bash
+# 1. Secrets across the whole git history.
+gitleaks detect --source . --redact
+
+# 2. Dependencies + misconfiguration at HIGH/CRITICAL.
+trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL .
+```
+
+Both exit non-zero when they find something, so they work as local gates too.
+
+### Pre-commit hook (optional)
+
+No hook is committed: Gitleaks and Trivy are external binaries, so enabling one
+for everyone would require extra setup on each machine. If you already have
+Gitleaks installed and want it to run on your staged changes, opt in once:
+
+```bash
+printf '#!/bin/sh\ngitleaks protect --staged --redact\n' > .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
 ## Styling
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
