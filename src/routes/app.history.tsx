@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useRef } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useRef, useState } from 'react'
 import RecordRow from '../components/app/RecordRow'
 import {
   downloadBackup,
@@ -16,7 +16,18 @@ export const Route = createFileRoute('/app/history')({
 function History() {
   const { ledger, deleteRecord, replaceAll } = useLedger()
   const fileRef = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
+  const [query, setQuery] = useState('')
   const sorted = sortRecs(ledger.recs)
+
+  const needle = query.trim().toLowerCase()
+  const filtered = needle
+    ? sorted.filter(
+        (r) =>
+          r.item.toLowerCase().includes(needle) ||
+          (r.cust ?? '').toLowerCase().includes(needle),
+      )
+    : sorted
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -33,6 +44,10 @@ function History() {
     }
   }
 
+  function onEdit(id: string) {
+    navigate({ to: '/app/edit/$id', params: { id } })
+  }
+
   function onDelete(id: string) {
     if (confirm('Delete this record?')) deleteRecord(id)
   }
@@ -41,14 +56,33 @@ function History() {
     <>
       <div className="card">
         <span className="card-title">All records</span>
-        {sorted.length ? (
+        <div className="field history-filter">
+          <label htmlFor="history-filter">Search by name or item</label>
+          <input
+            id="history-filter"
+            className="input"
+            type="search"
+            placeholder="e.g. Ada or rice"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        {filtered.length ? (
           <div>
-            {sorted.map((r) => (
-              <RecordRow key={r.id} rec={r} onDelete={onDelete} />
+            {filtered.map((r) => (
+              <RecordRow
+                key={r.id}
+                rec={r}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
             ))}
           </div>
         ) : (
-          <div className="empty">Nothing here yet.</div>
+          <div className="empty">
+            {needle ? 'No records match that search.' : 'Nothing here yet.'}
+          </div>
         )}
       </div>
 

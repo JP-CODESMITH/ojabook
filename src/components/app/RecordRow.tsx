@@ -2,10 +2,11 @@ import { naira, owed, type Rec } from '../../lib/store'
 
 interface Props {
   rec: Rec
+  onEdit?: (id: string) => void
   onDelete?: (id: string) => void
 }
 
-export default function RecordRow({ rec, onDelete }: Props) {
+export default function RecordRow({ rec, onEdit, onDelete }: Props) {
   const remaining = owed(rec)
 
   return (
@@ -31,17 +32,27 @@ export default function RecordRow({ rec, onDelete }: Props) {
           {rec.type === 'sale' ? '+' : '\u2212'}
           {naira(rec.amount)}
         </span>
-        {onDelete ? (
-          <>
-            <br />
-            <button
-              type="button"
-              className="btn-danger"
-              onClick={() => onDelete(rec.id)}
-            >
-              Delete
-            </button>
-          </>
+        {onEdit || onDelete ? (
+          <div className="row-actions">
+            {onEdit ? (
+              <button
+                type="button"
+                className="btn-inline"
+                onClick={() => onEdit(rec.id)}
+              >
+                Edit
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => onDelete(rec.id)}
+              >
+                Delete
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

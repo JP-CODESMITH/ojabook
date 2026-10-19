@@ -367,6 +367,7 @@ function commit(next: Ledger): void {
 
 export interface LedgerStore extends Snapshot {
   addRecord: (rec: Rec) => void
+  updateRecord: (rec: Rec) => void
   deleteRecord: (id: string) => void
   setBiz: (biz: string) => void
   payDebt: (name: string, amount: number) => void
@@ -382,6 +383,11 @@ export function useLedger(): LedgerStore {
     storageError: snap.storageError,
     addRecord: (rec) =>
       commit({ ...snapshot.ledger, recs: [...snapshot.ledger.recs, rec] }),
+    updateRecord: (rec) =>
+      commit({
+        ...snapshot.ledger,
+        recs: snapshot.ledger.recs.map((r) => (r.id === rec.id ? rec : r)),
+      }),
     deleteRecord: (id) =>
       commit({
         ...snapshot.ledger,

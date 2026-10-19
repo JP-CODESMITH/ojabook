@@ -668,6 +668,9 @@ a {
 .form-actions .btn {
   width: 100%;
 }
+.form-actions .btn + .btn {
+  margin-top: 8px;
+}
 
 .stat-grid {
   display: grid;
@@ -833,6 +836,13 @@ a {
 .row .r .amt {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 .pill {

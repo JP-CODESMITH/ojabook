@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAddRouteImport } from './routes/app.add'
 import { Route as AppDebtsRouteImport } from './routes/app.debts'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
+import { Route as AppEditIdRouteImport } from './routes/app.edit.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const AppHistoryRoute = AppHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEditIdRoute = AppEditIdRouteImport.update({
+  id: '/edit/$id',
+  path: '/edit/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/app/debts': typeof AppDebtsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/': typeof AppIndexRoute
+  '/app/edit/$id': typeof AppEditIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/app/debts': typeof AppDebtsRoute
   '/app/history': typeof AppHistoryRoute
   '/app': typeof AppIndexRoute
+  '/app/edit/$id': typeof AppEditIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/app/debts': typeof AppDebtsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/': typeof AppIndexRoute
+  '/app/edit/$id': typeof AppEditIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,8 +99,16 @@ export interface FileRouteTypes {
     | '/app/debts'
     | '/app/history'
     | '/app/'
+    | '/app/edit/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/privacy' | '/app/add' | '/app/debts' | '/app/history' | '/app'
+  to:
+    | '/'
+    | '/privacy'
+    | '/app/add'
+    | '/app/debts'
+    | '/app/history'
+    | '/app'
+    | '/app/edit/$id'
   id:
     | '__root__'
     | '/'
@@ -101,6 +118,7 @@ export interface FileRouteTypes {
     | '/app/debts'
     | '/app/history'
     | '/app/'
+    | '/app/edit/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHistoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/edit/$id': {
+      id: '/app/edit/$id'
+      path: '/edit/$id'
+      fullPath: '/app/edit/$id'
+      preLoaderRoute: typeof AppEditIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -168,6 +193,7 @@ interface AppRouteChildren {
   AppDebtsRoute: typeof AppDebtsRoute
   AppHistoryRoute: typeof AppHistoryRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppEditIdRoute: typeof AppEditIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -175,6 +201,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDebtsRoute: AppDebtsRoute,
   AppHistoryRoute: AppHistoryRoute,
   AppIndexRoute: AppIndexRoute,
+  AppEditIdRoute: AppEditIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
