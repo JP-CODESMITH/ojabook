@@ -1,11 +1,12 @@
-import { naira, today, type Rec } from '../../lib/store'
+import { naira, receivedEvents, today, type Rec } from '../../lib/store'
 
 /* ==========================================================================
    TrendChart — a compact 7-day bar chart for the Home screen.
-   Sold is shown as a pale bar; profit (or loss) is drawn beside it from the
-   same zero line, green when positive and red below the line when negative.
-   Pure inline SVG so it stays offline-friendly; a screen-reader table mirrors
-   the same numbers.
+   Cash in is shown as a pale bar; profit (or loss) is drawn beside it from
+   the same zero line, green when positive and red below the line when
+   negative. Cash is counted on the day it is received, so a debt paid later
+   lands on the payment day, not the sale day. Pure inline SVG so it stays
+   offline-friendly; a screen-reader table mirrors the same numbers.
    ========================================================================== */
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
@@ -19,7 +20,7 @@ const PAD_X = 2
 interface Day {
   date: string
   label: string
-  sold: number
+  cashIn: number
   spent: number
   net: number
   isToday: boolean
@@ -33,12 +34,19 @@ function ymd(d: Date): string {
 }
 
 function buildDays(recs: Rec[], count: number): Day[] {
-  const buckets = new Map<string, { sold: number; spent: number }>()
+  const buckets = new Map<string, { cashIn: number; spent: number }>()
+  const bucketFor = (date: string) => {
+    const b = buckets.get(date) ?? { cashIn: 0, spent: 0 }
+    buckets.set(date, b)
+    return b
+  }
+
   for (const r of recs) {
-    const b = buckets.get(r.date) ?? { sold: 0, spent: 0 }
-    if (r.type === 'sale') b.sold += r.amount
-    else b.spent += r.amount
-    buckets.set(r.date, b)
+    if (r.type === 'sale') {
+      for (const e of receivedEvents(r)) bucketFor(e.date).cashIn += e.amount
+    } else {
+      bucketFor(r.date).spent += r.amount
+    }
   }
 
   const end = new Date(today() + 'T00:00:00')
@@ -47,13 +55,13 @@ function buildDays(recs: Rec[], count: number): Day[] {
     const d = new Date(end)
     d.setDate(end.getDate() - i)
     const date = ymd(d)
-    const b = buckets.get(date) ?? { sold: 0, spent: 0 }
+    const b = buckets.get(date) ?? { cashIn: 0, spent: 0 }
     days.push({
       date,
       label: DAY_LABELS[d.getDay()],
-      sold: b.sold,
+      cashIn: b.cashIn,
       spent: b.spent,
-      net: b.sold - b.spent,
+      net: b.cashIn - b.spent,
       isToday: i === 0,
     })
   }
@@ -63,16 +71,17 @@ function buildDays(recs: Rec[], count: number): Day[] {
 export default function TrendChart({ recs }: { recs: Rec[] }) {
   const days = buildDays(recs, 7)
 
-  const soldTotal = days.reduce((a, d) => a + d.sold, 0)
+  const cashInTotal = days.reduce((a, d) => a + d.cashIn, 0)
   const profitTotal = days.reduce((a, d) => a + d.net, 0)
-  const hasData = days.some((d) => d.sold > 0 || d.spent > 0)
+  const hasData = days.some((d) => d.cashIn > 0 || d.spent > 0)
 
-  const margin = soldTotal > 0 ? Math.round((profitTotal / soldTotal) * 100) : 0
+  const margin =
+    cashInTotal > 0 ? Math.round((profitTotal / cashInTotal) * 100) : 0
   const isLoss = profitTotal < 0
 
   const maxUp = Math.max(
     1,
-    ...days.map((d) => Math.max(d.sold, Math.max(d.net, 0))),
+    ...days.map((d) => Math.max(d.cashIn, Math.max(d.net, 0))),
   )
   const maxDown = Math.max(0, ...days.map((d) => Math.max(-d.net, 0)))
   const scale = (PLOT_BOTTOM - PLOT_TOP) / (maxUp + maxDown)
@@ -91,13 +100,13 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
             <svg
               viewBox={`0 0 ${W} 210`}
               role="img"
-              aria-label={`Bar chart of money sold and profit or loss for each of the last 7 days. Sold over the week ${naira(soldTotal)}, ${isLoss ? 'loss' : 'profit'} ${naira(Math.abs(profitTotal))}.`}
+              aria-label={`Bar chart of cash received and profit or loss for each of the last 7 days. Cash in over the week ${naira(cashInTotal)}, ${isLoss ? 'loss' : 'profit'} ${naira(Math.abs(profitTotal))}.`}
             >
               {days.map((d, i) => {
                 const centre = PAD_X + (i + 0.5) * colW
-                const soldH = d.sold * scale
+                const cashH = d.cashIn * scale
                 const netH = Math.abs(d.net) * scale
-                const soldX = centre - barW - 1
+                const cashX = centre - barW - 1
                 const netX = centre + 1
                 return (
                   <g key={d.date}>
@@ -112,10 +121,10 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
                       />
                     )}
                     <rect
-                      x={soldX}
-                      y={zeroY - soldH}
+                      x={cashX}
+                      y={zeroY - cashH}
                       width={barW}
-                      height={Math.max(soldH, d.sold > 0 ? 2 : 0)}
+                      height={Math.max(cashH, d.cashIn > 0 ? 2 : 0)}
                       rx={3}
                       className="trend-sold"
                     />
@@ -156,7 +165,7 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
 
           <div className="trend-legend">
             <span>
-              <i className="trend-sold" /> Sold
+              <i className="trend-sold" /> Cash in
             </span>
             <span>
               <i className="trend-profit" /> Profit
@@ -168,7 +177,7 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
 
           <div className="trend-caption">
             <span>
-              Sold this week <b>{naira(soldTotal)}</b>
+              Cash in this week <b>{naira(cashInTotal)}</b>
             </span>
             <span>
               {isLoss ? 'Loss' : 'Profit'}{' '}
@@ -183,11 +192,11 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
           </div>
 
           <table className="sr-only">
-            <caption>Sold and profit or loss for the last 7 days</caption>
+            <caption>Cash received and profit or loss for the last 7 days</caption>
             <thead>
               <tr>
                 <th>Day</th>
-                <th>Sold</th>
+                <th>Cash in</th>
                 <th>Profit or loss</th>
               </tr>
             </thead>
@@ -195,7 +204,7 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
               {days.map((d) => (
                 <tr key={d.date}>
                   <th scope="row">{d.date}</th>
-                  <td>{naira(d.sold)}</td>
+                  <td>{naira(d.cashIn)}</td>
                   <td>
                     {d.net < 0 ? 'loss ' : 'profit '}
                     {naira(Math.abs(d.net))}
@@ -206,7 +215,7 @@ export default function TrendChart({ recs }: { recs: Rec[] }) {
           </table>
         </>
       ) : (
-        <div className="empty">No sales or expenses in the last 7 days.</div>
+        <div className="empty">No cash in or expenses in the last 7 days.</div>
       )}
     </div>
   )

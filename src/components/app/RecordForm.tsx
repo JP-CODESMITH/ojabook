@@ -41,9 +41,7 @@ export default function RecordForm({
   )
   const [pay, setPay] = useState<PayMode>(() => payModeFor(initial))
   const [paidNow, setPaidNow] = useState(
-    initial && initial.type === 'sale' && initial.paid > 0 && initial.paid < initial.amount
-      ? String(initial.paid)
-      : '',
+    initial?.type === 'sale' ? String(initial.paid) : '',
   )
   const [cust, setCust] = useState(initial?.cust ?? '')
   const [cat, setCat] = useState<string>(

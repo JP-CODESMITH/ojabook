@@ -69,7 +69,9 @@ export function today(): string {
 }
 
 export function naira(n: number): string {
-  return '\u20a6' + Math.round(n).toLocaleString('en-NG')
+  const value = Math.round(n)
+  const sign = value < 0 ? '-' : ''
+  return sign + '\u20a6' + Math.abs(value).toLocaleString('en-NG')
 }
 
 /** Money still owed on a record (sales only). */
@@ -77,9 +79,9 @@ export function owed(r: Rec): number {
   return r.type === 'sale' ? Math.max(0, r.amount - r.paid) : 0
 }
 
-export function inRange(r: Rec, range: Range): boolean {
+export function dateInRange(date: string, range: Range): boolean {
   if (range === 'all') return true
-  const t = new Date(r.date + 'T00:00:00')
+  const t = new Date(date + 'T00:00:00')
   const n = new Date(today() + 'T00:00:00')
   const days = (n.getTime() - t.getTime()) / 864e5
   if (range === 'today') return days === 0
@@ -90,6 +92,40 @@ export function inRange(r: Rec, range: Range): boolean {
   return true
 }
 
+export function inRange(r: Rec, range: Range): boolean {
+  return dateInRange(r.date, range)
+}
+
+export interface CashEvent {
+  date: string
+  amount: number
+}
+
+/**
+ * Cash actually received on a sale, split by the date it arrived.
+ *
+ * The payment recorded when the sale is created is attributed to the sale
+ * date; later debt payments keep their own recorded date. The running budget
+ * caps the total at `paid`, so stale or inconsistent `payments` entries can
+ * never report more cash than was received.
+ */
+export function receivedEvents(r: Rec): CashEvent[] {
+  if (r.type !== 'sale') return []
+  let budget = r.paid
+  const events: CashEvent[] = []
+  const payments = [...(r.payments ?? [])].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  )
+  for (const p of payments) {
+    if (budget <= 0) break
+    const take = Math.min(p.amount, budget)
+    if (take > 0) events.push({ date: p.date, amount: take })
+    budget -= take
+  }
+  if (budget > 0) events.push({ date: r.date, amount: budget })
+  return events
+}
+
 export function sortRecs(recs: Rec[]): Rec[] {
   return [...recs].sort(
     (a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id),
@@ -97,9 +133,14 @@ export function sortRecs(recs: Rec[]): Rec[] {
 }
 
 export interface Summary {
+  /** Sales billed in the period (sale amounts, paid or not). */
   sales: number
+  /** Cash actually received in the period. */
+  collected: number
   expenses: number
+  /** Cash received minus expenses. */
   profit: number
+  /** Outstanding debt across all time. */
   owed: number
 }
 
@@ -111,8 +152,11 @@ export function summarize(recs: Rec[], range: Range): Summary {
   const expenses = rows
     .filter((r) => r.type === 'exp')
     .reduce((a, r) => a + r.amount, 0)
+  const collected = recs
+    .flatMap(receivedEvents)
+    .reduce((a, e) => a + (dateInRange(e.date, range) ? e.amount : 0), 0)
   const owedTotal = recs.reduce((a, r) => a + owed(r), 0)
-  return { sales, expenses, profit: sales - expenses, owed: owedTotal }
+  return { sales, collected, expenses, profit: collected - expenses, owed: owedTotal }
 }
 
 export interface DebtGroup {

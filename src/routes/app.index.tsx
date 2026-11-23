@@ -19,7 +19,10 @@ function Home() {
   const { ledger } = useLedger()
   const [range, setRange] = useState<Range>('month')
 
-  const { sales, expenses, profit, owed } = summarize(ledger.recs, range)
+  const { sales, collected, expenses, profit, owed } = summarize(
+    ledger.recs,
+    range,
+  )
   const recent = sortRecs(ledger.recs).slice(0, 5)
 
   return (
@@ -42,20 +45,24 @@ function Home() {
         </div>
         <div className="stat-grid">
           <div className="stat">
-            <small>Sales</small>
-            <b className="pos">{naira(sales)}</b>
+            <small>Cash in</small>
+            <b className="pos">{naira(collected)}</b>
+            <span className="stat-sub">Billed {naira(sales)}</span>
           </div>
           <div className="stat">
             <small>Expenses</small>
             <b className="neg">{naira(expenses)}</b>
           </div>
           <div className="stat">
-            <small>Profit</small>
-            <b className={profit >= 0 ? 'pos' : 'neg'}>{naira(profit)}</b>
+            <small>{profit >= 0 ? 'Profit' : 'Loss'}</small>
+            <b className={profit >= 0 ? 'pos' : 'neg'}>
+              {naira(Math.abs(profit))}
+            </b>
           </div>
           <div className="stat">
             <small>Customers owe you</small>
             <b className="warn">{naira(owed)}</b>
+            <span className="stat-sub">All time</span>
           </div>
         </div>
       </div>
